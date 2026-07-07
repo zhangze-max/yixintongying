@@ -184,12 +184,23 @@ function switchTab(id, el){
 function refreshData(){
   var btn = document.getElementById('refreshBtn');
   var status = document.getElementById('syncStatus');
+  var syncUrl = 'http://localhost:8899/sync';
+  
+  // If on GitHub Pages, redirect to local version
+  if (location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+    window.open('http://localhost:8888', '_blank');
+    status.textContent = '🔗';
+    status.className = 'status ok';
+    alert('已跳转到本地版 (localhost:8888)\n请在本地版页面点击同步按钮。');
+    return;
+  }
+  
   btn.disabled = true;
   btn.textContent = '⏳ 同步中 (最多45秒)...';
   status.textContent = '⏳';
   status.className = 'status loading';
 
-  fetch('http://localhost:8899/sync', {method: 'POST'})
+  fetch(syncUrl, {method: 'POST'})
     .then(function(r){ return r.json(); })
     .then(function(res){
       if (res.status === 'ok') {
