@@ -111,12 +111,30 @@ def sync():
     return data
 
 
+
 if __name__ == '__main__':
-    import sys
+    import http.server, sys, json as _json
     if '--sync' in sys.argv:
         result = sync()
-        print(json.dumps(result, ensure_ascii=False) if result else '{"status":"error"}')
+        print(_json.dumps(result, ensure_ascii=False) if result else '{"status":"error"}')
     else:
+        class Handler(http.server.BaseHTTPRequestHandler):
+            def do_GET(self):
+                if self.path == '/sync': self._respond(sync())
+                elif self.path == '/health': self._respond({"status": "ok"})
+                else: self.send_response(404); self.end_headers()
+            def do_POST(self): return self.do_GET()
+            def do_OPTIONS(self):
+                self.send_response(200)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+                self.end_headers()
+            def _respond(self, data):
+                self.send_response(200)
+                self.send_header('Content-Type', 'application/json')
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(_json.dumps(data, ensure_ascii=False).encode())
         srv = http.server.HTTPServer(('127.0.0.1', 8899), Handler)
         print("Sync server (API): http://localhost:8899/sync")
         srv.serve_forever()

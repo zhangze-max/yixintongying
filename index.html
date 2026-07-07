@@ -184,55 +184,39 @@ function switchTab(id, el){
 function refreshData(){
   var btn = document.getElementById('refreshBtn');
   var status = document.getElementById('syncStatus');
-  
   btn.disabled = true;
-  btn.textContent = '⏳ 同步中...';
+  btn.textContent = '⏳ 刷新中...';
   status.textContent = '⏳';
   status.className = 'status loading';
 
-  // Try direct sync first
-  fetch('http://localhost:8899/sync', {method: 'POST'})
-    .then(function(r){ return r.json(); })
-    .then(function(res){
-      if (res.status === 'ok') {
-        var oldScript = document.querySelector('script[src^="data.js"]');
-        if (oldScript) oldScript.remove();
-        var script = document.createElement('script');
-        script.src = 'data.js?v=' + Date.now();
-        script.onload = function(){
-          var d = window.DATA;
-          if (d && d.sheets) {
-            document.getElementById('ts').textContent = '同步时间：' + d.timestamp;
-            rebuildPage(d);
-            status.textContent = '✅';
-            status.className = 'status ok';
-          }
-          btn.disabled = false;
-          btn.textContent = '🔄 同步数据';
-        };
-        script.onerror = function(){
-          status.textContent = '❌';
-          status.className = 'status err';
-          btn.disabled = false;
-          btn.textContent = '🔄 重试';
-        };
-        document.head.appendChild(script);
-      } else {
-        status.textContent = '⚠️';
-        status.className = 'status err';
-        btn.disabled = false;
-        btn.textContent = '🔄 重试';
-        alert('同步失败: ' + (res.message || '超时') + '\n\n请在Hermes聊天框说「同步数据」手动触发。');
-      }
-    })
-    .catch(function(e){
-      // Failed (mixed content on HTTPS, or server down) → open local version
-      status.textContent = '🔗';
+  // Cron updates data.js every 10min. Just reload with cache bust.
+  fetch('http://localhost:8899/sync', {method: 'POST'}).catch(function(){});
+  
+  var oldScript = document.querySelector('script[src^="data.js"]');
+  if (oldScript) oldScript.remove();
+  var script = document.createElement('script');
+  script.src = 'data.js?v=' + Date.now();
+  script.onload = function(){
+    var d = window.DATA;
+    if (d && d.sheets) {
+      document.getElementById('ts').textContent = '同步时间：' + d.timestamp;
+      rebuildPage(d);
+      status.textContent = '✅';
       status.className = 'status ok';
-      btn.disabled = false;
-      btn.textContent = '🔄 重试';
-      window.open('http://localhost:8888', '_blank');
-    });
+    } else {
+      status.textContent = '⚠️';
+      status.className = 'status err';
+    }
+    btn.disabled = false;
+    btn.textContent = '🔄 刷新数据';
+  };
+  script.onerror = function(){
+    status.textContent = '❌';
+    status.className = 'status err';
+    btn.disabled = false;
+    btn.textContent = '🔄 重试';
+  };
+  document.head.appendChild(script);
 }
 
 function rebuildPage(d){
