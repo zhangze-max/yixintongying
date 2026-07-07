@@ -122,9 +122,9 @@ var tabs = [
 ];
 var tw = document.getElementById('tabs');
 var pw = document.getElementById('panels');
-tabs.forEach(function(t, i){
+tabs.forEach(function(t, i){{
   var s = sheets[t.sheet];
-  tw.innerHTML += '<button class="tab'+(i===0?' active':'')+'" onclick="switchTab(\''+t.id+'\')">'+t.label+'<span class="cnt">'+s.count+'</span></button>';
+  tw.innerHTML += '<button class="tab'+(i===0?' active':'')+'" onclick="switchTab(\''+t.id+'\', this)">'+t.label+'<span class="cnt">'+s.count+'</span></button>';
   var h = '<div class="panel'+(i===0?' active':'')+'" id="p-'+t.id+'">';
   if (s.data.length === 0) {
     h += '<div class="empty">暂无数据</div>';
@@ -146,12 +146,12 @@ tabs.forEach(function(t, i){
   pw.innerHTML += h;
 });
 })();
-function switchTab(id){
-  document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); });
-  document.querySelectorAll('.panel').forEach(function(p){ p.classList.remove('active'); });
-  event.target.closest('.tab').classList.add('active');
+function switchTab(id, el){{
+  document.querySelectorAll('.tab').forEach(function(t){{ t.classList.remove('active'); }});
+  document.querySelectorAll('.panel').forEach(function(p){{ p.classList.remove('active'); }});
+  el.classList.add('active');
   document.getElementById('p-'+id).classList.add('active');
-}
+}}
 </script>
 </body>
 </html>
