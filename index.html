@@ -102,10 +102,8 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 (function(){
 var d = DATA;
 window.DATA = d;
-document.getElementById('ts').textContent = '同步时间：' + d.timestamp;
+document.getElementById('ts').textContent = '数据时间：' + d.timestamp;
 document.getElementById('src').textContent = d.source;
-document.getElementById('syncStatus').textContent = '✅';
-document.getElementById('syncStatus').className = 'status ok';
 
 // Leaderboard
 var scores = d.sheets['积分表'].data.slice();
@@ -180,75 +178,6 @@ function switchTab(id){
   document.getElementById('p-'+id).classList.add('active');
 }
 
-function refreshData(){
-  var btn = document.getElementById('refreshBtn');
-  var status = document.getElementById('syncStatus');
-  btn.disabled = true;
-  btn.textContent = '⏳ 同步中 (最多45秒)...';
-  status.textContent = '⏳';
-  status.className = 'status loading';
-
-  fetch('http://localhost:8899/sync', {method: 'POST'})
-    .then(function(r){ return r.json(); })
-    .then(function(res){
-      if (res.status === 'ok') {
-        var oldScript = document.querySelector('script[src^="data.js"]');
-        if (oldScript) oldScript.remove();
-        var script = document.createElement('script');
-        script.src = 'data.js?v=' + Date.now();
-        script.onload = function(){
-          var d = window.DATA;
-          if (d && d.sheets) {
-            document.getElementById('ts').textContent = '同步时间：' + d.timestamp;
-            rebuildPage(d);
-            status.textContent = '✅';
-            status.className = 'status ok';
-          }
-          btn.disabled = false;
-          btn.textContent = '🔄 同步数据';
-        };
-        script.onerror = function(){
-          status.textContent = '❌';
-          status.className = 'status err';
-          btn.disabled = false;
-          btn.textContent = '🔄 重试';
-        };
-        document.head.appendChild(script);
-      } else {
-        status.textContent = '⚠️';
-        status.className = 'status err';
-        btn.disabled = false;
-        btn.textContent = '🔄 重试';
-        alert('同步失败: ' + (res.message || '超时') + '\n\n请在Hermes聊天框说「同步数据」手动触发。');
-      }
-    })
-    .catch(function(e){
-      status.textContent = '⚠️';
-      status.className = 'status err';
-      btn.disabled = false;
-      btn.textContent = '🔄 重试';
-      alert('无法连接同步服务(端口8899)\n请确认已启动: python3 sync_server.py');
-    });
-}
-
-function rebuildPage(d){
-  // Leaderboard
-  var lb = document.getElementById('lb');
-  lb.innerHTML = '';
-  var scores = d.sheets['积分表'].data.slice();
-  scores.sort(function(a,b){ return parseInt(b[4]) - parseInt(a[4]); });
-  var medals = ['🥇','🥈','🥉'];
-  scores.forEach(function(row, i){
-    var cls = i===0?'gold':i===1?'silver':i===2?'bronze':'idle';
-    var m = i<3 ? '<div class="medal">'+medals[i]+'</div>' : '';
-    lb.innerHTML += '<div class="lb-card '+cls+'">'+m+
-      '<div class="lb-rank" style="color:'+(i===0?'var(--gold)':i===1?'var(--silver)':i===2?'var(--bronze)':'var(--t3)')+'">#'+(i+1)+'</div>'+
-      '<div class="lb-name">'+row[0]+'</div>'+
-      '<div class="lb-score">'+row[4]+'</div>'+
-      '<div class="lb-detail">差距'+row[1]+' | 异常'+row[2]+' | 自评'+row[3]+'</div>'+
-      '</div>';
-  });
-}
 </script>
 </body>
 </html>
