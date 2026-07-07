@@ -70,6 +70,9 @@ def sync():
             # Filter excluded personnel from 积分表
             if sheet["name"] == "积分表" and str_row[0] in EXCLUDE:
                 continue
+            # Filter header row from 积分表 (someone put "GitHub" in A1)
+            if sheet["name"] == "积分表" and (str_row[1] == "差距表积分" or str_row[0] == "GitHub"):
+                continue
             # Deduplicate
             key = str_row[0] if str_row[0] else str(str_row[1:3])
             if key not in seen:
