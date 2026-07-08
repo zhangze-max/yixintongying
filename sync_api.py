@@ -103,7 +103,7 @@ def sync():
     snap_dir = PROJECT / "snapshots"
     snap_dir.mkdir(exist_ok=True)
     snap_file = snap_dir / f"{today}.json"
-    if not snap_file.exists():
+    if not snap_file.exists() or os.environ.get("SNAPSHOT_FORCE"):
         with open(snap_file, 'w', encoding='utf-8') as f:
             json.dump({"date": today, "scores": scores}, f, ensure_ascii=False)
     
