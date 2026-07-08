@@ -140,6 +140,13 @@ function renderLeaderboard(period){
       var delta = deltas[name] !== undefined ? deltas[name] : null;
       if (delta !== null) ranked.push({name:name, score:delta, delta:delta});
     });
+    // No historical data yet → show baseline message
+    if (ranked.length === 0) {
+      var labels = {日:'暂无昨日数据，明日8:15后开始对比', 周:'暂无上周数据', 月:'暂无上月数据'};
+      lb.innerHTML = '<div style=\"text-align:center;padding:30px;color:var(--t3);font-size:13px\">📊 '+(labels[period]||'暂无对比数据')+'<br><span style=\"font-size:11px\">当前总排名如下</span></div>';
+      renderLeaderboard('total');
+      return;
+    }
   }
   ranked.sort(function(a,b){ return b.score - a.score; });
   
