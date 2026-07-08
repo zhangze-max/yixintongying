@@ -45,6 +45,12 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 .lb-detail{font-size:10px;color:var(--t3);margin-top:2px}
 .lb-card.idle{opacity:.6}
 .medal{font-size:24px;position:absolute;top:-8px;right:-4px}
+.period-tabs{float:right;display:flex;gap:4px}
+.ptab{padding:3px 12px;border:1px solid var(--border);border-radius:12px;background:var(--surface);font-size:11px;cursor:pointer;color:var(--t2);transition:.15s}
+.ptab:hover{border-color:var(--blue)}
+.ptab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.delta{font-size:10px;margin-left:4px}
+.delta.up{color:var(--green)}.delta.down{color:var(--red)}.delta.zero{color:var(--t3)}
 /* Content */
 .content{max-width:1200px;margin:16px auto 30px;padding:0 24px}
 /* Tabs */
@@ -86,7 +92,15 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 </div>
 
 <div class="lb-wrap">
-  <div class="lb-title">🏆 积分榜 · 全员排名</div>
+  <div class="lb-title">
+    🏆 积分榜
+    <span class="period-tabs">
+      <button class="ptab active" onclick="switchPeriod('total',this)">总排名</button>
+      <button class="ptab" onclick="switchPeriod('日',this)">日排名</button>
+      <button class="ptab" onclick="switchPeriod('周',this)">周排名</button>
+      <button class="ptab" onclick="switchPeriod('月',this)">月排名</button>
+    </span>
+  </div>
   <div class="lb" id="lb"></div>
 </div>
 
@@ -103,26 +117,66 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
 (function(){
 var d = DATA;
 window.DATA = d;
+var currentPeriod = 'total';
 document.getElementById('ts').textContent = '同步时间：' + d.timestamp;
 document.getElementById('src').textContent = d.source;
 document.getElementById('syncStatus').textContent = '✅';
 document.getElementById('syncStatus').className = 'status ok';
 
-// Leaderboard
-var scores = d.sheets['积分表'].data.slice();
-scores.sort(function(a,b){ return parseInt(b[4]) - parseInt(a[4]); });
-var medals = ['🥇','🥈','🥉'];
-var lb = document.getElementById('lb');
-scores.forEach(function(row, i){
-  var cls = i===0?'gold':i===1?'silver':i===2?'bronze':'idle';
-  var m = i<3 ? '<div class="medal">'+medals[i]+'</div>' : '';
-  lb.innerHTML += '<div class="lb-card '+cls+'">'+m+
-    '<div class="lb-rank" style="color:'+(i===0?'var(--gold)':i===1?'var(--silver)':i===2?'var(--bronze)':'var(--t3)')+'">#'+(i+1)+'</div>'+
-    '<div class="lb-name">'+row[0]+'</div>'+
-    '<div class="lb-score">'+row[4]+'</div>'+
-    '<div class="lb-detail">差距'+row[1]+' | 异常'+row[2]+' | 自评'+row[3]+'</div>'+
-    '</div>';
-});
+function renderLeaderboard(period){
+  var lb = document.getElementById('lb');
+  lb.innerHTML = '';
+  var raw = d.sheets['积分表'].data.slice();
+  var deltas = (d.deltas && d.deltas[period]) || {};
+  
+  var ranked;
+  if (period === 'total') {
+    ranked = raw.map(function(r){ return {name:r[0], score:parseInt(r[4])||0, delta:null}; });
+  } else {
+    ranked = [];
+    raw.forEach(function(r){
+      var name = r[0], score = parseInt(r[4])||0;
+      if (!name) return;
+      var delta = deltas[name] !== undefined ? deltas[name] : null;
+      if (delta !== null) ranked.push({name:name, score:delta, delta:delta});
+    });
+  }
+  ranked.sort(function(a,b){ return b.score - a.score; });
+  
+  var medals = ['🥇','🥈','🥉'];
+  ranked.forEach(function(p, i){
+    if (!p.name) return;
+    var cls = i===0?'gold':i===1?'silver':i===2?'bronze':'idle';
+    var m = i<3 ? '<div class="medal">'+medals[i]+'</div>' : '';
+    var deltaHtml = '';
+    if (p.delta !== null && period !== 'total') {
+      var dc = p.delta > 0 ? 'up' : p.delta < 0 ? 'down' : 'zero';
+      var ds = p.delta > 0 ? '+'+p.delta : String(p.delta);
+      deltaHtml = '<span class="delta '+dc+'">'+ds+'</span>';
+    }
+    // Get detail scores for total period
+    var detail = '';
+    if (period === 'total') {
+      var rr = raw.find(function(x){ return x[0] === p.name; });
+      if (rr) detail = '<div class="lb-detail">差距'+rr[1]+' | 异常'+rr[2]+' | 自评'+rr[3]+'</div>';
+    }
+    lb.innerHTML += '<div class="lb-card '+cls+'\">'+m+
+      '<div class="lb-rank" style=\"color:'+(i===0?'var(--gold)':i===1?'var(--silver)':i===2?'var(--bronze)':'var(--t3)')+'\">#'+(i+1)+'</div>'+
+      '<div class="lb-name">'+p.name+deltaHtml+'</div>'+
+      '<div class="lb-score">'+p.score+'</div>'+detail+
+      '</div>';
+  });
+}
+
+renderLeaderboard('total');
+
+function switchPeriod(p, el){
+  currentPeriod = p;
+  document.querySelectorAll('.ptab').forEach(function(t){ t.classList.remove('active'); });
+  el.classList.add('active');
+  renderLeaderboard(p);
+}
+window.switchPeriod = switchPeriod;
 
 // Stats
 var sheets = d.sheets;

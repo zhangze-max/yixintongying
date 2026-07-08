@@ -95,6 +95,61 @@ def sync():
         "summary": {k: v["count"] for k, v in sheets_out.items()}
     }
     
+    # Calculate current scores
+    scores = {row[0]: int(row[4]) for row in sheets_out["积分表"]["data"] if row[0] and row[4].isdigit()}
+    
+    # Save daily snapshot for 日/周/月 ranking
+    today = datetime.date.today().strftime("%Y-%m-%d")
+    snap_dir = PROJECT / "snapshots"
+    snap_dir.mkdir(exist_ok=True)
+    snap_file = snap_dir / f"{today}.json"
+    if not snap_file.exists():
+        with open(snap_file, 'w', encoding='utf-8') as f:
+            json.dump({"date": today, "scores": scores}, f, ensure_ascii=False)
+    
+    # Load snapshots for deltas
+    snapshots = {"today": {}, "yesterday": {}, "last_week": {}, "last_month": {}}
+    for fpath in sorted(snap_dir.glob("*.json")):
+        with open(fpath) as f:
+            snap = json.load(f)
+        snapshots["today"] = snap["scores"]
+        if fpath.stem == today:
+            break
+    
+    # Find yesterday
+    yesterday = (datetime.date.today() - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    y_file = snap_dir / f"{yesterday}.json"
+    if y_file.exists():
+        with open(y_file) as f:
+            snapshots["yesterday"] = json.load(f)["scores"]
+    
+    # Find last week (7 days ago, closest)
+    for days_ago in range(7, 14):
+        lw = (datetime.date.today() - datetime.timedelta(days=days_ago)).strftime("%Y-%m-%d")
+        lw_file = snap_dir / f"{lw}.json"
+        if lw_file.exists():
+            with open(lw_file) as f:
+                snapshots["last_week"] = json.load(f)["scores"]
+            break
+    
+    # Find last month (30 days ago, closest)
+    for days_ago in range(28, 35):
+        lm = (datetime.date.today() - datetime.timedelta(days=days_ago)).strftime("%Y-%m-%d")
+        lm_file = snap_dir / f"{lm}.json"
+        if lm_file.exists():
+            with open(lm_file) as f:
+                snapshots["last_month"] = json.load(f)["scores"]
+            break
+    
+    data["deltas"] = {}
+    for period, snap in [("日", "yesterday"), ("周", "last_week"), ("月", "last_month")]:
+        if snapshots[snap]:
+            deltas = {}
+            for name, score in scores.items():
+                prev = snapshots[snap].get(name, 0)
+                deltas[name] = score - prev
+            data["deltas"][period] = deltas
+    
     # Write files
     for p in [PROJECT / "data.json", DESKTOP / "data.json"]:
         with open(p, 'w', encoding='utf-8') as f:
