@@ -150,6 +150,14 @@ def sync():
                 deltas[name] = score - prev
             data["deltas"][period] = deltas
     
+    # Build history: all available dates with scores
+    history = []
+    for fpath in sorted(snap_dir.glob("*.json")):
+        with open(fpath) as f:
+            snap = json.load(f)
+        history.append({"date": snap["date"], "scores": snap["scores"]})
+    data["history"] = history
+    
     # Write files
     for p in [PROJECT / "data.json", DESKTOP / "data.json"]:
         with open(p, 'w', encoding='utf-8') as f:

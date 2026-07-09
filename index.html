@@ -99,6 +99,9 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;backgrou
       <button class="ptab" onclick="switchPeriod('日',this)">日排名</button>
       <button class="ptab" onclick="switchPeriod('周',this)">周排名</button>
       <button class="ptab" onclick="switchPeriod('月',this)">月排名</button>
+      <select class="ptab" id="historyDate" onchange="showHistory(this.value)" style="display:none">
+        <option value="">📅 历史</option>
+      </select>
     </span>
   </div>
   <div class="lb" id="lb"></div>
@@ -177,11 +180,59 @@ function renderLeaderboard(period){
 
 renderLeaderboard('total');
 
+// Populate history date selector
+var hist = d.history || [];
+var hsel = document.getElementById('historyDate');
+if (hist.length > 1) {
+  hsel.style.display = '';
+  hist.forEach(function(h){
+    hsel.innerHTML += '<option value="'+h.date+'">'+h.date+'</option>';
+  });
+}
+
 function switchPeriod(p, el){
   currentPeriod = p;
   document.querySelectorAll('.ptab').forEach(function(t){ t.classList.remove('active'); });
   el.classList.add('active');
+  document.getElementById('historyDate').value = '';
   renderLeaderboard(p);
+}
+
+function showHistory(dateStr){
+  if (!dateStr) return;
+  document.querySelectorAll('.ptab').forEach(function(t){ t.classList.remove('active'); });
+  var h = (d.history||[]).find(function(x){ return x.date === dateStr; });
+  if (!h) return;
+  
+  var lb = document.getElementById('lb');
+  lb.innerHTML = '<div style="text-align:center;padding:8px;font-size:12px;color:var(--blue);font-weight:600">📅 历史排名 · '+dateStr+'</div>';
+  
+  // Find previous date for delta
+  var idx = hist.findIndex(function(x){ return x.date === dateStr; });
+  var prev = idx > 0 ? hist[idx-1].scores : {};
+  
+  var ranked = [];
+  Object.keys(h.scores).forEach(function(name){
+    var delta = prev[name] !== undefined ? h.scores[name] - prev[name] : null;
+    ranked.push({name:name, score:h.scores[name], delta:delta});
+  });
+  ranked.sort(function(a,b){ return b.score - a.score; });
+  
+  var medals = ['🥇','🥈','🥉'];
+  ranked.forEach(function(p, i){
+    var cls = i===0?'gold':i===1?'silver':i===2?'bronze':'idle';
+    var m = i<3 ? '<div class="medal">'+medals[i]+'</div>' : '';
+    var dh = '';
+    if (p.delta !== null) {
+      var dc = p.delta > 0 ? 'up' : p.delta < 0 ? 'down' : 'zero';
+      dh = '<span class="delta '+dc+'">'+(p.delta>0?'+':'')+p.delta+'</span>';
+    }
+    lb.innerHTML += '<div class="lb-card '+cls+'">'+m+
+      '<div class="lb-rank">#'+(i+1)+'</div>'+
+      '<div class="lb-name">'+p.name+dh+'</div>'+
+      '<div class="lb-score">'+p.score+'</div>'+
+      '</div>';
+  });
 }
 window.switchPeriod = switchPeriod;
 
