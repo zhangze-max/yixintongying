@@ -132,38 +132,41 @@ function renderLeaderboard(period){
   var raw = d.sheets['积分表'].data.slice();
   var deltas = (d.deltas && d.deltas[period]) || {};
   
-  var ranked;
+  var ranked = [];
   var allZero = true;
+  
   if (period === 'total') {
-    ranked = raw.map(function(r){ return {name:r[0], score:parseInt(r[4])||0, delta:null}; });
-  } else {
-    ranked = [];
-    var allZero = true;
     raw.forEach(function(r){
-      var name = r[0], score = parseInt(r[4])||0;
+      if (!r[0]) return;
+      ranked.push({name:r[0], score:parseInt(r[4])||0, delta:null});
+    });
+    allZero = false; // irrelevant for total
+  } else {
+    // Period ranking: score = delta (新增积分), only show those with changes
+    raw.forEach(function(r){
+      var name = r[0];
       if (!name) return;
       var delta = deltas[name] !== undefined ? deltas[name] : null;
-      if (delta !== null) {
-        ranked.push({name:name, score:score, delta:delta});
-        if (delta !== 0) allZero = false;
-      }
+      if (delta === null) return;
+      if (delta !== 0) allZero = false;
+      ranked.push({name:name, score:delta, delta:delta});
     });
-    // No historical data → fallback to total
+    
     if (ranked.length === 0) {
       var labels = {日:'暂无昨日数据，明日8:15后可对比', 周:'暂无上周数据', 月:'暂无上月数据'};
       lb.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px">📊 '+(labels[period]||'暂无对比数据')+'</div>';
-      renderLeaderboard('total');
       return;
     }
   }
+  
   ranked.sort(function(a,b){ return b.score - a.score; });
   
-  var medals = ['🥇','🥈','🥉'];
   var header = '';
   if (period !== 'total' && allZero) {
-    header = '<div style="text-align:center;font-size:11px;color:var(--t3);padding:3px 0 8px">所有成员积分与对比期持平</div>';
+    header = '<div style="text-align:center;font-size:11px;color:var(--t3);padding:3px 0 8px">📊 今日暂无新增积分，以下为变化记录</div>';
   }
   lb.innerHTML = header;
+  var medals = ['🥇','🥈','🥉'];
   ranked.forEach(function(p, i){
     if (!p.name) return;
     var cls = i===0?'gold':i===1?'silver':i===2?'bronze':'idle';
