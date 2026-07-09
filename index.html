@@ -133,25 +133,30 @@ function renderLeaderboard(period){
   var deltas = (d.deltas && d.deltas[period]) || {};
   
   var ranked = [];
-  var allZero = true;
   
   if (period === 'total') {
     raw.forEach(function(r){
       if (!r[0]) return;
       ranked.push({name:r[0], score:parseInt(r[4])||0, delta:null});
     });
-    allZero = false; // irrelevant for total
   } else {
-    // Period ranking: score = delta (新增积分), only show those with changes
+    // Period ranking: only show people with non-zero deltas
+    ranked = [];
     raw.forEach(function(r){
       var name = r[0];
       if (!name) return;
       var delta = deltas[name] !== undefined ? deltas[name] : null;
       if (delta === null) return;
-      if (delta !== 0) allZero = false;
-      ranked.push({name:name, score:delta, delta:delta});
+      if (delta !== 0) {
+        ranked.push({name:name, score:delta, delta:delta});
+      }
     });
     
+    if (ranked.length === 0 && Object.keys(deltas).length > 0) {
+      var labels = {日:'今日暂无新增积分', 周:'本周暂无新增积分', 月:'本月暂无新增积分'};
+      lb.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px">📊 '+(labels[period]||'暂无')+'</div>';
+      return;
+    }
     if (ranked.length === 0) {
       var labels = {日:'暂无昨日数据，明日8:15后可对比', 周:'暂无上周数据', 月:'暂无上月数据'};
       lb.innerHTML = '<div style="text-align:center;padding:30px;color:var(--t3);font-size:13px">📊 '+(labels[period]||'暂无对比数据')+'</div>';
@@ -160,12 +165,6 @@ function renderLeaderboard(period){
   }
   
   ranked.sort(function(a,b){ return b.score - a.score; });
-  
-  var header = '';
-  if (period !== 'total' && allZero) {
-    header = '<div style="text-align:center;font-size:11px;color:var(--t3);padding:3px 0 8px">📊 今日暂无新增积分，以下为变化记录</div>';
-  }
-  lb.innerHTML = header;
   var medals = ['🥇','🥈','🥉'];
   ranked.forEach(function(p, i){
     if (!p.name) return;
